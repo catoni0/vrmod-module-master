@@ -317,7 +317,7 @@ LUA_FUNCTION(GetPoses) {
     for (int i = -1; i < g_actionCount; i++) {
         if (i != -1){
             if (g_actions[i].type == ActionType_Pose) {
-                g_pInput->GetPoseActionData(g_actions[i].handle, vr::TrackingUniverseStanding, 0, &poseActionData, sizeof(poseActionData), vr::k_ulInvalidInputValueHandle);
+                g_pInput-> GetPoseActionDataRelativeToNow(g_actions[i].handle, vr::TrackingUniverseStanding, 0, &poseActionData, sizeof(poseActionData), vr::k_ulInvalidInputValueHandle);
                 pose = poseActionData.pose;
                 poseName = g_actions[i].name;
                 poseRef = g_actions[i].luaRefs[0];
@@ -389,7 +389,7 @@ LUA_FUNCTION(GetActions) {
             LUA->SetField(-2, g_actions[i].name);
         }
         else if (g_actions[i].type == ActionType_Skeleton) {
-            g_pInput->GetSkeletalSummaryData(g_actions[i].handle, &skeletalSummaryData);
+            g_pInput->GetSkeletalSummaryData(g_actions[i].handle, static_cast<vr::EVRSummaryType>(1) , &skeletalSummaryData);
             LUA->ReferencePush(g_actions[i].luaRefs[0]);
             LUA->ReferencePush(g_actions[i].luaRefs[1]);
             for (int j = 0; j < 5; j++) {
