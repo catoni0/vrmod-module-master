@@ -108,12 +108,71 @@ typedef void            (*glGenTextures_t)(GLsizei n, GLuint *textures);
 void*                   g_createTexture = NULL;
 GLuint                  g_sharedTexture = GL_INVALID_VALUE;
 COpenGLEntryPoints*     g_GL = NULL;
-void CreateTextureHook(GLsizei n, GLuint *textures) {
+#include <GL/gl.h>
+
+// Verification and filtering functions for 2D textures
+void VerifyTexture2D(GLuint textureId) {
+    glBindTexture(GL_TEXTURE_2D, textureId);
+    GLint width, height;
+    glGetTexLevelParameteriv(GL_TEXTURE_2D, 0, GL_TEXTURE_WIDTH, &width);
+    glGetTexLevelParameteriv(GL_TEXTURE_2D, 0, GL_TEXTURE_HEIGHT, &height);
+    if (width <= 0 || height <= 0) {
+        fprintf(stderr, "Invalid 2D texture dimensions: width %d, height %d\n", width, height);
+    }
+    glBindTexture(GL_TEXTURE_2D, 0);
+}
+
+void SetTextureFiltering2D(GLuint textureId, GLenum filter) {
+    glBindTexture(GL_TEXTURE_2D, textureId);
+    glTexParameteri(GL_TEXTURE_2D, GL_TEXTURE_MIN_FILTER, filter);
+    glTexParameteri(GL_TEXTURE_2D, GL_TEXTURE_MAG_FILTER, filter);
+    glBindTexture(GL_TEXTURE_2D, 0);
+}
+
+// Verification and filtering functions for 3D textures
+void VerifyTexture3D(GLuint textureId) {
+    glBindTexture(GL_TEXTURE_3D, textureId);
+    GLint width, height, depth;
+    glGetTexLevelParameteriv(GL_TEXTURE_3D, 0, GL_TEXTURE_WIDTH, &width);
+    glGetTexLevelParameteriv(GL_TEXTURE_3D, 0, GL_TEXTURE_HEIGHT, &height);
+    glGetTexLevelParameteriv(GL_TEXTURE_3D, 0, GL_TEXTURE_DEPTH, &depth);
+    if (width <= 0 || height <= 0 || depth <= 0) {
+        fprintf(stderr, "Invalid 3D texture dimensions: width %d, height %d, depth %d\n", width, height, depth);
+    }
+    glBindTexture(GL_TEXTURE_3D, 0);
+}
+
+void SetTextureFiltering3D(GLuint textureId, GLenum filter) {
+    glBindTexture(GL_TEXTURE_3D, textureId);
+    glTexParameteri(GL_TEXTURE_3D, GL_TEXTURE_MIN_FILTER, filter);
+    glTexParameteri(GL_TEXTURE_3D, GL_TEXTURE_MAG_FILTER, filter);
+    glBindTexture(GL_TEXTURE_3D, 0);
+}
+
+// Updated CreateTextureHook function
+void CreateTextureHook(GLsizei n, GLuint* textures) {
     memcpy((void*)g_createTexture, (void*)g_createTextureOrigBytes, 14);
     ((glGenTextures_t)g_createTexture)(n, textures);
+
+    for (GLsizei i = 0; i < n; ++i) {
+        GLuint textureId = textures[i];
+
+        glBindTexture(GL_TEXTURE_2D, textureId);
+        GLint is2DTexture;
+        glGetTexLevelParameteriv(GL_TEXTURE_2D, 0, GL_TEXTURE_WIDTH, &is2DTexture);
+
+        if (is2DTexture) {
+            VerifyTexture2D(textureId);
+            SetTextureFiltering2D(textureId, GL_LINEAR);  // Example: set filtering to linear
+        } else {
+            VerifyTexture3D(textureId);
+            SetTextureFiltering3D(textureId, GL_LINEAR);  // Example: set filtering to linear
+        }
+        glBindTexture(GL_TEXTURE_2D, 0);
+    }
     g_sharedTexture = textures[0];
-    return;
 }
+
 #endif
 
 LUA_FUNCTION(GetVersion) {
@@ -141,6 +200,7 @@ LUA_FUNCTION(Init) {
     if (g_GL) 
         g_GL = NULL;
         g_createTexture = NULL;
+        g_sharedTexture == GL_INVALID_VALUE;
 
     for(int i = 0; i < LuaRefIndex_Max; i++){
         LUA->CreateTable();
