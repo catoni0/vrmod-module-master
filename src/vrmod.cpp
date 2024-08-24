@@ -137,6 +137,11 @@ LUA_FUNCTION(Init) {
     }
     if (!vr::VRCompositor())
         LUA->ThrowError("VRCompositor failed");
+
+    if (g_GL) 
+        g_GL = NULL;
+        g_createTexture = NULL;
+
     for(int i = 0; i < LuaRefIndex_Max; i++){
         LUA->CreateTable();
         g_luaRefs[i] = LUA->ReferenceCreate();
@@ -155,6 +160,7 @@ LUA_FUNCTION(Init) {
 # endif
     g_createTexture = ((CreateTexture**)g_pD3D9Device)[0][23];
 #else
+
 # ifdef __x86_64__
     void *lib = dlopen("libtogl_client.so", RTLD_NOW | RTLD_NOLOAD);
 # else
@@ -429,8 +435,12 @@ LUA_FUNCTION(ShareTextureBegin) {
     uintptr_t alignedAddr = (uintptr_t)g_createTexture & ~(getpagesize()-1);
     if(mprotect((void*)alignedAddr, getpagesize(), PROT_READ | PROT_WRITE | PROT_EXEC) == -1)
         LUA->ThrowError("mprotect fail");
+
+    glFinish();
     memcpy((void*)g_createTextureOrigBytes, (void*)g_createTexture, 14);
     memcpy((void*)g_createTexture, (void*)patch, 14);
+    glFinish();
+
 #endif
     return 0;
 }
@@ -511,6 +521,7 @@ LUA_FUNCTION(Shutdown) {
     g_pD3D9Device = NULL;
     g_sharedTexture = NULL;
 #else
+    glDeleteTextures(1, &g_sharedTexture);
     g_sharedTexture = GL_INVALID_VALUE;
 #endif
     return 0;
